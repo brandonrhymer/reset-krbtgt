@@ -61,10 +61,12 @@ instead of an unbounded privileged session.
 
 ## ADR-007: Fail-closed policy and time
 
-**Decision:** Read effective Kerberos interval attributes and default-domain
-password policy from both DCs. Values must be readable and identical, and
-`MaxTicketAge` must be exactly 10 hours. Reset 2 requires 11 elapsed UTC hours
-with no bypass.
+**Decision:** Query each DC's effective Kerberos intervals through the read-only
+Windows LSA policy API (`LsaQueryDomainInformationPolicy`) and read the
+default-domain password policy from each DC. Values must be readable and
+identical, and `MaxTicketAge` must be exactly 10 hours. Reset 2 requires 11
+elapsed UTC hours with no bypass. Kerberos policy-file keys such as
+`MaxServiceAge` are not treated as LDAP attributes.
 
 **Reason:** Microsoft documents a default 10-hour maximum user-ticket lifetime
 and describes the policy fields in [MS-GPSB Kerberos Policy](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpsb/0fce5b92-bcc1-4b96-9c2b-56397c3f144f).

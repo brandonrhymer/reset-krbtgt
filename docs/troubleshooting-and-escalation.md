@@ -24,6 +24,7 @@ not evidence that a real failure is safe to override.
 | Current identity is not Domain Admin | Current token lacks current-domain RID 512 group SID | Sign out and follow the approved privileged-login process. Do not supply alternate credentials. |
 | Event source or receipt directory missing/wrong | One-time local setup is absent or ACL drifted | Stop. Review installation and local security policy; run setup only with AD authority approval. |
 | DC count is not exactly two, an RODC exists, or OS is not Server 2022 | Environment no longer matches the approved profile | Stop. Do not exclude or skip a DC. Reassess architecture. |
+| `LsaOpenPolicy` or `LsaQueryDomainInformationPolicy` fails | Effective KDC policy could not be read from a DC, commonly because access or RPC policy blocks the read | Preserve the exact Win32 error and escalate to AD/security owners. Do not substitute a default value. |
 | `MaxTicketAge` is not 10 hours or policy differs | The fixed wait assumption is invalid | Stop. Correct policy only through the separate approved GPO process, never through this tool. |
 | DNS/SRV, `dcdiag`, replication, or time check fails/unparseable | Health cannot be proven | Preserve exact output and escalate to AD/DNS/time owners. Do not use a warning as success. |
 | `dcdiag` success marker is unparseable | Output/localization differs from the verified parser | Stop. This release expects the documented English success markers; do not edit the parser at change time. |

@@ -9,7 +9,16 @@ InModuleScope KrbtgtRotation {
         function Get-ADUser { throw 'Test-only AD stub must be mocked.' }
     }
     if (-not (Get-Command -Name Get-ADObject -ErrorAction SilentlyContinue)) {
-        function Get-ADObject { throw 'Test-only AD stub must be mocked.' }
+        function Get-ADObject {
+            param($Identity, $Server, $Properties, $Filter, $SearchBase, [switch]$IncludeDeletedObjects)
+            throw 'Test-only AD stub must be mocked.'
+        }
+    }
+    if (-not (Get-Command -Name Get-ADDefaultDomainPasswordPolicy -ErrorAction SilentlyContinue)) {
+        function Get-ADDefaultDomainPasswordPolicy {
+            param($Server)
+            throw 'Test-only AD stub must be mocked.'
+        }
     }
 
     function New-MockedMetadata {
@@ -380,6 +389,83 @@ InModuleScope KrbtgtRotation {
                     -DomainControllers @('dc1.contoso.example', 'dc2.contoso.example') } | Should Throw
 
             Assert-MockCalled Get-ADObject -Times 0 -Exactly -Scope It
+        }
+    }
+
+    Describe 'Effective Kerberos policy collection' {
+        BeforeEach {
+            if (-not (Get-Command -Name Get-ADObject -ErrorAction SilentlyContinue)) {
+                function Get-ADObject {
+                    param($Identity, $Server, $Properties)
+                    throw 'Test-only AD stub must be mocked.'
+                }
+            }
+            if (-not (Get-Command -Name Get-ADDefaultDomainPasswordPolicy -ErrorAction SilentlyContinue)) {
+                function Get-ADDefaultDomainPasswordPolicy {
+                    param($Server)
+                    throw 'Test-only AD stub must be mocked.'
+                }
+            }
+            Mock Get-ADObject {
+                param($Identity, $Server, $Properties)
+                if (@($Properties) -contains 'maxServiceAge' -or
+                    @($Properties) -contains 'maxClockSkew') {
+                    throw 'Kerberos policy keys are not valid domain-object LDAP attributes.'
+                }
+                [pscustomobject]@{
+                    gPLink    = '[LDAP://CN={GUID},CN=Policies,CN=System,DC=contoso,DC=example;0]'
+                    gPOptions = 0
+                }
+            }
+            Mock Get-ADDefaultDomainPasswordPolicy {
+                [pscustomobject]@{
+                    MinPasswordLength    = 14
+                    ComplexityEnabled    = $true
+                    PasswordHistoryCount = 24
+                    MinPasswordAge       = [TimeSpan]::FromDays(1)
+                    MaxPasswordAge       = [TimeSpan]::FromDays(60)
+                    LockoutThreshold     = 3
+                }
+            }
+            Mock Get-KrbtgtEffectiveKerberosPolicy {
+                [pscustomobject]@{
+                    AuthenticationOptions     = 128
+                    MaxServiceTicketAgeTicks = -([TimeSpan]::FromHours(10).Ticks)
+                    MaxTicketAgeTicks        = -([TimeSpan]::FromHours(10).Ticks)
+                    MaxRenewAgeTicks         = -([TimeSpan]::FromDays(7).Ticks)
+                    MaxClockSkewTicks        = -([TimeSpan]::FromMinutes(5).Ticks)
+                }
+            }
+        }
+
+        It 'queries effective LSA policy on both DCs without invalid LDAP attributes' {
+            $result = Get-KrbtgtPolicySnapshot -DomainDistinguishedName 'DC=contoso,DC=example' `
+                -DomainControllers @('dc1.contoso.example', 'dc2.contoso.example')
+
+            $result.MaxTicketAgeMinutes | Should Be 600
+            $result.MaxServiceAgeMinutes | Should Be 600
+            $result.MaxRenewAgeMinutes | Should Be 10080
+            $result.MaxClockSkewMinutes | Should Be 5
+            $result.PerDcEvidence[0].AuthenticationOptions | Should Be 128
+            Assert-MockCalled Get-KrbtgtEffectiveKerberosPolicy -Times 2 -Exactly -Scope It
+            Assert-MockCalled Get-ADObject -Times 2 -Exactly -Scope It
+        }
+
+        It 'rejects effective Kerberos policy disagreement between DCs' {
+            Mock Get-KrbtgtEffectiveKerberosPolicy {
+                param($DomainController)
+                $serviceHours = if ($DomainController -eq 'dc1.contoso.example') { 10 } else { 9 }
+                [pscustomobject]@{
+                    AuthenticationOptions     = 128
+                    MaxServiceTicketAgeTicks = -([TimeSpan]::FromHours($serviceHours).Ticks)
+                    MaxTicketAgeTicks        = -([TimeSpan]::FromHours(10).Ticks)
+                    MaxRenewAgeTicks         = -([TimeSpan]::FromDays(7).Ticks)
+                    MaxClockSkewTicks        = -([TimeSpan]::FromMinutes(5).Ticks)
+                }
+            }
+
+            { Get-KrbtgtPolicySnapshot -DomainDistinguishedName 'DC=contoso,DC=example' `
+                    -DomainControllers @('dc1.contoso.example', 'dc2.contoso.example') } | Should Throw
         }
     }
 

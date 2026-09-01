@@ -2,7 +2,7 @@ Set-StrictMode -Version Latest
 
 # These values are intentionally fixed. They are safety properties of the
 # approved operating profile, not tuning knobs for an operator to weaken.
-$script:ToolVersion              = '0.1.0'
+$script:ToolVersion              = '0.1.1'
 $script:ReceiptSchemaVersion     = '1.0'
 $script:EventSchemaVersion       = '1.0'
 $script:EventSource              = 'KrbtgtRotation'
@@ -12,6 +12,204 @@ $script:ConvergenceTimeoutSeconds = 300
 $script:PollIntervalSeconds      = 5
 $script:Reset2MinimumHours       = 11
 $script:ExpectedTicketHours      = 10
+
+function Initialize-KrbtgtLsaInterop {
+    [CmdletBinding()]
+    param()
+
+    if ($null -ne ('KrbtgtRotation.Native.LsaPolicy' -as [type])) {
+        return
+    }
+
+    # LsaQueryDomainInformationPolicy is the read-only Windows API used to
+    # obtain the effective Kerberos policy that the KDC itself consumes. The
+    # wrapper requests only POLICY_VIEW_LOCAL_INFORMATION and releases every
+    # native handle and buffer before returning.
+    Add-Type -Language CSharp -ErrorAction Stop -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
+namespace KrbtgtRotation.Native
+{
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LsaUnicodeString
+    {
+        internal ushort Length;
+        internal ushort MaximumLength;
+        internal IntPtr Buffer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LsaObjectAttributes
+    {
+        internal uint Length;
+        internal IntPtr RootDirectory;
+        internal IntPtr ObjectName;
+        internal uint Attributes;
+        internal IntPtr SecurityDescriptor;
+        internal IntPtr SecurityQualityOfService;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PolicyDomainKerberosTicketInfo
+    {
+        internal uint AuthenticationOptions;
+        internal long MaxServiceTicketAge;
+        internal long MaxTicketAge;
+        internal long MaxRenewAge;
+        internal long MaxClockSkew;
+        internal long Reserved;
+    }
+
+    public sealed class KerberosPolicyInfo
+    {
+        public uint AuthenticationOptions { get; internal set; }
+        public long MaxServiceTicketAgeTicks { get; internal set; }
+        public long MaxTicketAgeTicks { get; internal set; }
+        public long MaxRenewAgeTicks { get; internal set; }
+        public long MaxClockSkewTicks { get; internal set; }
+    }
+
+    public static class LsaPolicy
+    {
+        private const uint PolicyViewLocalInformation = 0x00000001;
+        private const int PolicyDomainKerberosTicketInformation = 3;
+
+        [DllImport("advapi32.dll")]
+        private static extern uint LsaOpenPolicy(
+            ref LsaUnicodeString systemName,
+            ref LsaObjectAttributes objectAttributes,
+            uint desiredAccess,
+            out IntPtr policyHandle);
+
+        [DllImport("advapi32.dll")]
+        private static extern uint LsaQueryDomainInformationPolicy(
+            IntPtr policyHandle,
+            int informationClass,
+            out IntPtr buffer);
+
+        [DllImport("advapi32.dll")]
+        private static extern uint LsaFreeMemory(IntPtr buffer);
+
+        [DllImport("advapi32.dll")]
+        private static extern uint LsaClose(IntPtr policyHandle);
+
+        [DllImport("advapi32.dll")]
+        private static extern uint LsaNtStatusToWinError(uint status);
+
+        public static KerberosPolicyInfo Query(string computerName)
+        {
+            if (String.IsNullOrWhiteSpace(computerName))
+            {
+                throw new ArgumentException("A target computer name is required.", "computerName");
+            }
+
+            IntPtr nameBuffer = Marshal.StringToHGlobalUni(computerName);
+            try
+            {
+                LsaUnicodeString systemName = new LsaUnicodeString();
+                systemName.Length = checked((ushort)(computerName.Length * 2));
+                systemName.MaximumLength = checked((ushort)((computerName.Length + 1) * 2));
+                systemName.Buffer = nameBuffer;
+
+                LsaObjectAttributes attributes = new LsaObjectAttributes();
+
+                IntPtr policyHandle;
+                uint status = LsaOpenPolicy(
+                    ref systemName,
+                    ref attributes,
+                    PolicyViewLocalInformation,
+                    out policyHandle);
+                ThrowIfFailed(status, "LsaOpenPolicy", computerName);
+
+                try
+                {
+                    IntPtr buffer;
+                    status = LsaQueryDomainInformationPolicy(
+                        policyHandle,
+                        PolicyDomainKerberosTicketInformation,
+                        out buffer);
+                    ThrowIfFailed(status, "LsaQueryDomainInformationPolicy", computerName);
+
+                    try
+                    {
+                        PolicyDomainKerberosTicketInfo nativeInfo =
+                            (PolicyDomainKerberosTicketInfo)Marshal.PtrToStructure(
+                                buffer,
+                                typeof(PolicyDomainKerberosTicketInfo));
+                        KerberosPolicyInfo result = new KerberosPolicyInfo();
+                        result.AuthenticationOptions = nativeInfo.AuthenticationOptions;
+                        result.MaxServiceTicketAgeTicks = nativeInfo.MaxServiceTicketAge;
+                        result.MaxTicketAgeTicks = nativeInfo.MaxTicketAge;
+                        result.MaxRenewAgeTicks = nativeInfo.MaxRenewAge;
+                        result.MaxClockSkewTicks = nativeInfo.MaxClockSkew;
+                        return result;
+                    }
+                    finally
+                    {
+                        LsaFreeMemory(buffer);
+                    }
+                }
+                finally
+                {
+                    LsaClose(policyHandle);
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(nameBuffer);
+            }
+        }
+
+        private static void ThrowIfFailed(uint status, string operation, string computerName)
+        {
+            if (status == 0)
+            {
+                return;
+            }
+
+            uint win32Error = LsaNtStatusToWinError(status);
+            string nativeMessage = new Win32Exception((int)win32Error).Message;
+            throw new Win32Exception(
+                (int)win32Error,
+                operation + " failed for '" + computerName +
+                "' (NTSTATUS 0x" + status.ToString("X8") +
+                ", Win32 " + win32Error.ToString() + "): " + nativeMessage);
+        }
+    }
+}
+'@
+}
+
+function Get-KrbtgtEffectiveKerberosPolicy {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$DomainController
+    )
+
+    Initialize-KrbtgtLsaInterop
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Stop'
+        $policy = [KrbtgtRotation.Native.LsaPolicy]::Query($DomainController)
+    }
+    catch {
+        $baseException = $_.Exception.GetBaseException()
+        throw "The effective Kerberos policy could not be read from '$DomainController' through the Windows LSA policy API: $($baseException.Message)"
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    return [pscustomobject][ordered]@{
+        AuthenticationOptions     = [uint32]$policy.AuthenticationOptions
+        MaxServiceTicketAgeTicks = [int64]$policy.MaxServiceTicketAgeTicks
+        MaxTicketAgeTicks        = [int64]$policy.MaxTicketAgeTicks
+        MaxRenewAgeTicks         = [int64]$policy.MaxRenewAgeTicks
+        MaxClockSkewTicks        = [int64]$policy.MaxClockSkewTicks
+    }
+}
 
 function Get-KrbtgtUtcNow {
     [CmdletBinding()]
@@ -582,18 +780,20 @@ function Get-KrbtgtPolicySnapshot {
     )
 
     $perDc = foreach ($dc in $DomainControllers) {
-        # Kerberos account-policy intervals are replicated domain attributes.
-        # Reading them and the domain GPO-link fields from each DC avoids an
-        # unsafe fallback and proves both replicas report the same effective data.
+        # Query each DC's effective LSA Kerberos policy, which is the same
+        # policy data source consumed by the KDC. The domain GPO-link fields
+        # and password policy remain independent replication evidence.
         $domainObject = Get-ADObject -Identity $DomainDistinguishedName -Server $dc `
-            -Properties maxTicketAge, maxServiceAge, maxRenewAge, maxClockSkew, gPLink, gPOptions `
+            -Properties gPLink, gPOptions `
             -ErrorAction Stop
         $passwordPolicy = Get-ADDefaultDomainPasswordPolicy -Server $dc -ErrorAction Stop
+        $kerberosPolicy = Get-KrbtgtEffectiveKerberosPolicy -DomainController $dc
 
-        $ticket = ConvertFrom-KrbtgtAdInterval -Value $domainObject.maxTicketAge -Name maxTicketAge
-        $service = ConvertFrom-KrbtgtAdInterval -Value $domainObject.maxServiceAge -Name maxServiceAge
-        $renew = ConvertFrom-KrbtgtAdInterval -Value $domainObject.maxRenewAge -Name maxRenewAge
-        $skew = ConvertFrom-KrbtgtAdInterval -Value $domainObject.maxClockSkew -Name maxClockSkew
+        $ticket = ConvertFrom-KrbtgtAdInterval -Value $kerberosPolicy.MaxTicketAgeTicks -Name MaxTicketAge
+        $service = ConvertFrom-KrbtgtAdInterval `
+            -Value $kerberosPolicy.MaxServiceTicketAgeTicks -Name MaxServiceAge
+        $renew = ConvertFrom-KrbtgtAdInterval -Value $kerberosPolicy.MaxRenewAgeTicks -Name MaxRenewAge
+        $skew = ConvertFrom-KrbtgtAdInterval -Value $kerberosPolicy.MaxClockSkewTicks -Name MaxClockSkew
 
         if ($ticket.TotalHours -ne $script:ExpectedTicketHours) {
             throw "DC '$dc' reports MaxTicketAge=$($ticket.TotalHours) hours; the approved profile requires exactly $($script:ExpectedTicketHours) hours."
@@ -611,6 +811,7 @@ function Get-KrbtgtPolicySnapshot {
             MaxServiceAgeMinutes   = [int]$service.TotalMinutes
             MaxRenewAgeMinutes     = [int]$renew.TotalMinutes
             MaxClockSkewMinutes    = [int]$skew.TotalMinutes
+            AuthenticationOptions  = [uint32]$kerberosPolicy.AuthenticationOptions
             MinPasswordLength      = [int]$passwordPolicy.MinPasswordLength
             ComplexityEnabled      = [bool]$passwordPolicy.ComplexityEnabled
             PasswordHistoryCount   = [int]$passwordPolicy.PasswordHistoryCount

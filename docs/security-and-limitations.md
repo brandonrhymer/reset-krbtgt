@@ -11,7 +11,7 @@ These methods can show local control flow and mock call boundaries. They cannot
 certify:
 
 - real Domain Admin or directory permissions;
-- ADWS, LDAP, RPC, DNS, time, KDC, or `dcdiag` behavior;
+- ADWS, LDAP, RPC/LSA policy, DNS, time, KDC, or `dcdiag` behavior;
 - `Sync-ADObject` convergence or deleted-object replication in the enclave;
 - GPO application, custom password filters, authentication policies/silos, or
   Protected Users behavior;
@@ -43,6 +43,8 @@ The tool makes only the in-enclave connections inherently required to read both
 DCs, run targeted DC diagnostics/time queries, reset the selected object, and
 force its single-object replication. Depending on Windows/AD configuration,
 those Microsoft tools use DNS, LDAP/ADWS, Kerberos, RPC, and related AD protocols.
+The effective Kerberos interval check opens each DC's LSA policy with read-only
+`POLICY_VIEW_LOCAL_INFORMATION` access; it does not set or refresh policy.
 
 The product contains no Internet/cloud endpoint, web request, dependency
 download, SMTP/mail, Microsoft Graph, telemetry, update check, remote forest,

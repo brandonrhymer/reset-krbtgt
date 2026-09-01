@@ -30,7 +30,7 @@ The release gate requires:
   commands in implementation source;
 - every publication-manifest file present and matching `SHA256SUMS.txt`.
 
-The final local run completed with **22 passed, 0 failed**, zero parser errors,
+The final local run completed with **24 passed, 0 failed**, zero parser errors,
 and zero configured analyzer findings. `RepresentativeAdTested` was `False`.
 
 ## Mocked behaviors
@@ -49,6 +49,9 @@ Pester verifies:
 - Test password failure stops before deletion/corrective action;
 - a 30-minute-old prerequisite receipt is rejected;
 - metadata advancement other than exactly one version is rejected;
+- effective Kerberos policy is obtained on both DC paths without requesting
+  policy-file keys as LDAP attributes;
+- inconsistent effective Kerberos policy between DCs is rejected;
 - Reset 2 timing, receipt identity, anomaly, and intervening-mutation gates.
 
 ## Inert fixtures

@@ -1,6 +1,6 @@
 @{
     RootModule        = 'KrbtgtRotation.psm1'
-    ModuleVersion     = '0.1.0'
+    ModuleVersion     = '0.1.1'
     GUID              = 'bb4eebbd-d8bd-4537-9c67-4c1ae6ad43cb'
     Author            = 'csfc-scripts contributors'
     CompanyName       = 'Community'

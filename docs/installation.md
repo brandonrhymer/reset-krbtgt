@@ -16,9 +16,10 @@ Each in-scope enclave must meet every item:
 - no RODCs or cloud/Entra Kerberos integration;
 - Microsoft Windows PowerShell 5.1 Desktop edition on both DCs;
 - Microsoft `ActiveDirectory` module and `dcdiag.exe` already installed;
-- working DNS, ADWS, KDC, time, and replication services;
+- working DNS, ADWS, KDC, time, RPC/LSA policy access, and replication services;
 - effective domain `MaxTicketAge` of exactly 10 hours and readable consistent
-  Kerberos/default-domain password policy on both DCs;
+  Kerberos/default-domain password policy on both DCs (Kerberos intervals are
+  read through the Windows LSA policy API used by the KDC);
 - an interactive current-domain Domain Admin account;
 - a Windows PowerShell session already started with **Run as administrator**.
 
