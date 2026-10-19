@@ -27,3 +27,4 @@ docs/operator-runbook.md
 docs/security-and-limitations.md
 docs/troubleshooting-and-escalation.md
 docs/verification.md
+CONTRIBUTING.md

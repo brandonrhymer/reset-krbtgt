@@ -11,9 +11,10 @@ control-flow properties.
 The release is checked with:
 
 ```powershell
-.\tools\Invoke-ReleaseVerification.ps1
-.\tools\New-ReleaseHashes.ps1
 .\tools\Test-ReleaseHashes.ps1
+# Only after intentional package edits and source review:
+.\tools\New-ReleaseHashes.ps1
+.\tools\Invoke-ReleaseVerification.ps1
 ```
 
 The development workstation used Windows PowerShell 5.1 parsing/import, Pester
@@ -32,6 +33,14 @@ The release gate requires:
 
 The final local run completed with **24 passed, 0 failed**, zero parser errors,
 and zero configured analyzer findings. `RepresentativeAdTested` was `False`.
+
+## Continuous integration
+
+The `Verify` GitHub Actions workflow runs the release gate on Windows Server
+2022 with Windows PowerShell 5.1, Pester 3.4.0, and PSScriptAnalyzer 1.25.0.
+It checks committed hashes without regenerating them. CI downloads development
+dependencies on the hosted runner; the offline package never does so.
+Checks establish static and mocked properties only, with no AD deployment.
 
 ## Mocked behaviors
 
