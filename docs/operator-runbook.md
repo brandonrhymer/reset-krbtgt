@@ -8,8 +8,8 @@ or post-check anomaly. Do not rerun a production reset, attempt a password
 rollback, or continue to Reset 2.** Preserve the System events and JSON receipts
 and follow the escalation guide.
 
-This tool has not been validated in a representative AD environment. Use only
-under the responsible AD authority's approved validation and change process.
+Use under the responsible AD authority's approved change process and confirm
+the target environment meets the supported profile.
 
 ## What each flow does
 

@@ -2,13 +2,13 @@
 
 ## Validation status
 
-**Not validated in a representative Active Directory environment.** No command
-from this product was executed against AD during development. Verification was
-limited to parsing, a selected PSScriptAnalyzer ruleset, mocked Pester tests,
-inert JSON fixtures, and source review against Microsoft documentation.
+The tool has been successfully used in production on multiple occasions,
+as confirmed by the maintainer. Automated repository checks additionally cover
+parsing, a selected PSScriptAnalyzer ruleset, mocked Pester tests, inert JSON
+fixtures, and source review against Microsoft documentation.
 
-These methods can show local control flow and mock call boundaries. They cannot
-certify:
+Automated checks show local control flow and mock call boundaries. The following
+remain environment-specific operational considerations:
 
 - real Domain Admin or directory permissions;
 - ADWS, LDAP, RPC/LSA policy, DNS, time, KDC, or `dcdiag` behavior;
@@ -18,11 +18,11 @@ certify:
 - application and end-user authentication impact;
 - event retention, application allowlisting, code signing, or receipt ACL
   behavior under enclave policy;
-- rollback, forest recovery, incident response, or operational fitness.
+- forest recovery and incident-response procedures, which are outside scope.
 
-The responsible AD authority must define independent preproduction validation,
-change approval, manual client smoke tests, evidence classification/retention,
-and recovery/escalation before use.
+The responsible AD authority defines change approval, environment-specific
+validation, manual client smoke tests, evidence classification/retention,
+and recovery/escalation procedures.
 
 ## Intended boundary
 

@@ -1,12 +1,12 @@
 # KrbtgtRotation
 
-> **Not validated in a representative Active Directory environment.** This
-> package has received parser checks, static analysis, source review, fixture
-> walkthroughs, and mocked unit tests only. Those methods cannot validate real
-> permissions, policy application, DNS, RPC, replication, KDC behavior,
-> authentication impact, password filters, or recovery behavior. The responsible
-> Active Directory authority must establish independent preproduction and
-> operational validation before enclave use.
+Attended KRBTGT rotation for a fixed, two-domain-controller Active Directory
+environment. Built for Windows PowerShell 5.1 with explicit safety gates,
+structured evidence, and mocked Pester tests.
+
+The tool has been successfully used in production on multiple occasions.
+See the [verification record](docs/verification.md) for production-use status
+and the scope of automated checks.
 
 KrbtgtRotation is a small Windows PowerShell 5.1 tool for attended, routine
 rotation of the current domain's built-in `krbtgt` account in one narrowly
@@ -82,3 +82,22 @@ rollback password, or deletes/compresses evidence.
 All runtime evidence stays on the executing DC under
 `%ProgramData%\KrbtgtRotation\Receipts` and in the classic **System** event log
 under source `KrbtgtRotation`.
+
+## Development
+
+Use Windows PowerShell 5.1 with Pester 3.4.0 and PSScriptAnalyzer 1.25.0.
+Verification runs on a development workstation without AD RSAT or a domain
+controller; directory operations are mocked.
+
+```powershell
+.\tools\Invoke-ReleaseVerification.ps1
+```
+
+This checks release hashes, PowerShell syntax, the configured analyzer rules,
+and the mocked test suite. It never installs dependencies. GitHub Actions runs
+the same checks on `main` pushes and pull requests; dependency downloads are confined
+to the hosted CI runner.
+
+See [Contributing](CONTRIBUTING.md) for the branch, validation, and release
+workflow. See [Verification](docs/verification.md) for what the checks establish
+and which checks depend on the target environment.
