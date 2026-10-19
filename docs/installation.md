@@ -1,11 +1,10 @@
 # Installation
 
-## Release limitation
+## Operational approval
 
-**This package is not validated in a representative Active Directory
-environment.** Installation does not make it production-certified. Obtain the
-responsible AD authority's approval for enclave-specific preproduction and
-operational validation before using any state-changing phase.
+The tool has been successfully used in production on multiple occasions.
+Follow the responsible AD authority's change process and confirm the target
+environment meets the supported profile before using any state-changing phase.
 
 ## Fixed prerequisites
 

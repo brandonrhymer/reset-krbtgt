@@ -105,12 +105,17 @@ self-elevation, evidence deletion/compression, and change-ticket fields.
 **Reason:** Each facility enlarges privileges or failure paths without improving
 the correctness of one attended routine rotation.
 
-## ADR-011: Verification claim remains narrow
+## ADR-011: Separate automated checks from operational validation
 
 **Decision:** Release only after parser success, clean selected static analysis,
 mocked Pester call-boundary tests, fixture walkthroughs, hash generation, and
-source review. Prominently state the lack of representative AD validation.
+source review. Record production-use confirmation separately from automated
+verification results.
 
 **Reason:** Mocks can verify orchestration but cannot establish operational
 fitness, permissions, replication, KDC behavior, authentication impact, or
 recovery behavior.
+
+**Status update (October 19, 2026):** The maintainer confirmed successful
+production use on multiple occasions. Automated checks remain a separate
+source of regression evidence.

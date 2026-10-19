@@ -1,10 +1,10 @@
 # Verification record
 
-## Claim boundary
+## Production use
 
-**Not validated in a representative Active Directory environment.** No live or
-lab AD command was executed. Results below establish only static and mocked
-control-flow properties.
+The maintainer confirmed on October 19, 2026 that the tool has been used in
+production multiple times and validated as working. This records operational
+experience separately from the automated checks below.
 
 ## Local release gates
 
@@ -32,7 +32,8 @@ The release gate requires:
 - every publication-manifest file present and matching `SHA256SUMS.txt`.
 
 The final local run completed with **24 passed, 0 failed**, zero parser errors,
-and zero configured analyzer findings. `RepresentativeAdTested` was `False`.
+and zero configured analyzer findings. `AdIntegrationTestsExecuted` is `False`
+for this automated gate because it does not connect to Active Directory.
 
 ## Continuous integration
 
@@ -95,10 +96,11 @@ walkthrough:
 | No rollback or unrelated features | Prohibited-command scan and source review |
 | Durable local evidence | Receipt/event schemas and mocked writer boundary |
 
-## What remains unverified
+## Environment-specific checks
 
-Real password acceptance, temporary-user tombstone behavior, metadata values,
+Password acceptance, temporary-user tombstone behavior, metadata values,
 replication deadlines, DC diagnostics/localization, ACL enforcement, event-log
-retention, application authentication, and recovery remain enclave validation
-responsibilities. A green test run must never be represented as production
-certification.
+retention, application authentication, and recovery depend on the target
+environment. Check them under the responsible AD authority's change process.
+Automated checks supplement the confirmed production use; they do not execute
+AD integration tests or establish compatibility with additional topologies.

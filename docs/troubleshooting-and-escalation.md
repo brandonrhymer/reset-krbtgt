@@ -13,8 +13,8 @@
    procedure. This routine-rotation tool does not diagnose compromise or perform
    forest recovery.
 
-The package is not representative-lab validated. A local mocked test result is
-not evidence that a real failure is safe to override.
+Successful prior production use and passing mocked tests do not make a current
+failure safe to override.
 
 ## Common Preflight blocks
 

@@ -70,5 +70,5 @@ if ($pesterResult.TotalCount -eq 0 -or $pesterResult.FailedCount -ne 0 -or
     PSScriptAnalyzerFindings = 0
     PesterTotal              = $pesterResult.TotalCount
     PesterPassed             = $pesterResult.PassedCount
-    RepresentativeAdTested   = $false
+    AdIntegrationTestsExecuted = $false
 }

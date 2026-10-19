@@ -9,4 +9,4 @@ Describe the problem and the resulting behavior.
 - [ ] Relevant documentation and regression tests reflect behavior changes.
 - [ ] No operational receipts, credentials, or customer information are included.
 
-Record remaining limitations. Mocked tests do not establish representative AD validation.
+Record remaining limitations and distinguish automated checks from operational validation.

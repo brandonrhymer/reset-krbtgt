@@ -61,8 +61,8 @@ only during CI setup, outside the offline runtime package.
   only the files listed in `release-manifest.txt`, retaining relative paths.
   Run `Test-ReleaseHashes.ps1` against the extracted package before publishing.
 - Release notes must identify changes, the exact commit, verification results,
-  and the lack of representative AD validation. Never imply that a successful
-  CI run certifies operational use.
+  and the scope of operational validation. Keep confirmed production experience
+  separate from what the automated checks exercise.
 
 Do not commit real receipts, domain details, credentials, customer information,
 or generated test output. Keep fixtures fictional and report sensitive issues
