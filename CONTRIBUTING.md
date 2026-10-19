@@ -44,7 +44,8 @@ they do not authenticate a publisher or replace code signing.
 ## Continuous integration
 
 GitHub Actions runs the local verification gate on a hosted Windows runner
-for pushes, pull requests, and manual dispatch. It uses read-only repository
+for `main` pushes, pull requests, and manual dispatch. Branch pushes update the
+pull-request check without starting a duplicate push run. It uses read-only repository
 permissions and explicitly versioned development dependencies. It has no AD
 credentials and performs no deployment. Network dependency installation occurs
 only during CI setup, outside the offline runtime package.

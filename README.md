@@ -99,7 +99,7 @@ controller; directory operations are mocked.
 
 This checks release hashes, PowerShell syntax, the configured analyzer rules,
 and the mocked test suite. It never installs dependencies. GitHub Actions runs
-the same checks on pushes and pull requests; dependency downloads are confined
+the same checks on `main` pushes and pull requests; dependency downloads are confined
 to the hosted CI runner.
 
 See [Contributing](CONTRIBUTING.md) for the branch, validation, and release
